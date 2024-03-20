@@ -84,7 +84,22 @@ class ContentRouterAssistant:
             ],
         )
 
-        self.routes.extend([press_release, client_brief, client_strategy])
+        speech_writing = Route(
+            name="speech-writing",
+            utterances=[
+                "craft a narrative for our upcoming keynote address that aligns corporate vision and strategic goals"
+                "can you develop a speech for our COO that showcases leadership and foresight?",
+                "I need expertise to devise a presentation that underscores our innovations and trajectory",
+                "draft an inspiring and motivational address that energizes and aligns with our initiatives?",
+                "create a speech that highlights our commitment to responsibility and engagement?",
+                "require a persuasive and data-driven speech to present, outlining financial health and growth",
+                "formulate a transparent and reassuring speech to reinforce trust and confidence",
+                "synthesize a visionary speech that positions us as thought leaders and pioneers in our industry",
+                "need a speech that articulates our strategy and commitment to markets, resonating with a diverse audience"
+            ],
+        )
+
+        self.routes.extend([press_release, client_brief, client_strategy, speech_writing])
 
     def process_input(self, input_text):
         rl = RouteLayer(encoder=self.encoder, routes=self.routes)

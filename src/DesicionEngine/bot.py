@@ -74,13 +74,15 @@ class LLMQAInteraction:
 
     def _refactor_qa_prompt(self, question):
         routed_topic = self.content_router.process_input(question)
-        print("SELECTED TOPIC: ", routed_topic.name)
+        print("ROUTED TOPIC: ", routed_topic.name)
         match routed_topic.name:
             case 'press-release':
                 qa_system_prompt = press_release_prompt()
             case 'client-brief-clarification':
                 qa_system_prompt = client_brief_prompt()
             case 'content-strategy-suggestion':
+                qa_system_prompt = content_strategy_prompt()
+            case 'speech-writing':
                 qa_system_prompt = content_strategy_prompt()
             case _:
                 qa_system_prompt = none_case_catcher()

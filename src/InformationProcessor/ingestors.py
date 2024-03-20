@@ -57,14 +57,18 @@ class SrcIngestor(SrcType):
             for file in files:
                 extension = file.split('.')[-1]
                 if extension in self.txt:
+                    print(f"Processing {file}")
                     self.ingest_txt(file)
                 elif extension in self.pdf:
+                    print(f"Processing {file}")
                     self.ingest_pdf(file,  open_ai=self.ai_credentials)
                 elif extension in self.word:
                     self.ingest_word(file)
                 elif extension in self.image:
+                    print(f"Processing {file}")
                     self.ingest_image(file)
                 elif extension in self.sound:
+                    print(f"Processing {file}")
                     self.ingest_sound(file)
                 else:
                     print(f"Unsupported file type: {file}")

@@ -1,5 +1,6 @@
 import os
 import io
+from time import sleep
 import requests
 import base64
 import numpy as np
@@ -142,7 +143,11 @@ class ImageDescriber:
             ],
             "max_tokens": 500
         }
-
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-        description = response.json()['choices'][0]['message']['content']
+        sleep(1)
+        try:
+            response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+            description = response.json()['choices'][0]['message']['content']
+        except Exception as e:
+            print(f"Error retrieving image description: {e}")
+            description = ""
         return description

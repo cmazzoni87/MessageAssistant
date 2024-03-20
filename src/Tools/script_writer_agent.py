@@ -12,6 +12,11 @@ def press_release_prompt() -> str:
     return prompts.PRESS_RELEASE_ANALYSIS
 
 
+def speech_writing() -> str:
+    """Return the prompt for the content strategy suggestion."""
+    return prompts.CONTENT_STRATEGY_SUGGESTION
+
+
 def client_brief_prompt() -> str:
     """
     Return the prompt for the client brief clarification.
