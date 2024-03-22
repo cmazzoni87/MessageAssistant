@@ -152,7 +152,7 @@ class SrcIngestor(SrcType, NERExtractor):
         audio_documents = txt_splitter.split_text(preprocessed_audio)
         self.store_data(audio_documents, metadata)
 
-    def chunker(self, payload, preprocessed_audio, metadata, action):
+    def chunker(self, payload, preprocessed_file, metadata, action):
         """
         This function will chunk the audio file into smaller pieces and store its content in the corresponding memory bank.
         """
@@ -161,5 +161,5 @@ class SrcIngestor(SrcType, NERExtractor):
         other_file_names = os.listdir(payload.split(file_name)[0])
         metadata_dic = [{'file_name': file_name, 'other_files': other_file_names,
                          'doc_info': {'file_type': action, 'metadata': metadata}}
-                        for _ in range(len(preprocessed_audio))]
+                        for _ in range(len(preprocessed_file))]
         return text_splitter, metadata_dic
