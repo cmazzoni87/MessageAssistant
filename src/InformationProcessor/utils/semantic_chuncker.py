@@ -1,8 +1,5 @@
 # https://api.python.langchain.com/en/latest/_modules/langchain_experimental/text_splitter.html
 # https://github.com/FullStackRetrieval-com/RetrievalTutorials/blob/main/5_Levels_Of_Text_Splitting.ipynb
-# How to call  VVVV
-# https://python.langchain.com/docs/modules/data_connection/document_transformers/semantic-chunker
-import re
 import copy
 import numpy as np
 from typing import List, Tuple, Optional, Any, Iterable, Sequence
@@ -10,6 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.documents.transformers import BaseDocumentTransformer
+from nltk.tokenize import sent_tokenize
 
 
 def combine_sentences(sentences: List[dict], buffer_size: int = 1) -> List[dict]:
@@ -85,7 +83,8 @@ class SemanticChunker(BaseDocumentTransformer):
     def split_text(self, text: str) -> List[str]:
         """Split text into multiple components."""
         # Splitting the essay on '.', '?', and '!'
-        single_sentences_list = re.split(r"(?<=[.?!])\s+", text)
+        # single_sentences_list = re.split(r"(?<=[.?!])\s+", text)
+        single_sentences_list = sent_tokenize(text)
         sentences = [
             {"sentence": x, "index": i} for i, x in enumerate(single_sentences_list)
         ]

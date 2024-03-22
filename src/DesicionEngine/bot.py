@@ -1,10 +1,13 @@
-import os
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage
 from .event_broker import VectorStoreManager, ContentRouterAssistant
-from src.Tools.script_writer_agent import press_release_prompt, client_brief_prompt, content_strategy_prompt, none_case_catcher
+from src.Tools.script_writer_agent import (press_release_prompt,
+                                           client_brief_prompt,
+                                           content_strategy_prompt,
+                                           speech_writing,
+                                           none_case_catcher)
 
 
 class LLMQAInteraction:
@@ -23,6 +26,7 @@ class LLMQAInteraction:
         self.store_name = store_name
         self.table_name = table_name
         self.topic = None
+        self.current_document = None
         self.chat_history = []
         self.context_payload = []
         self.llm = ChatOpenAI(model_name=llm_model_name,
@@ -74,7 +78,7 @@ class LLMQAInteraction:
 
     def _refactor_qa_prompt(self, question):
         routed_topic = self.content_router.process_input(question)
-        print("ROUTED TOPIC: ", routed_topic.name)
+        print("SELECTED TOPIC: ", routed_topic.name)
         match routed_topic.name:
             case 'press-release':
                 qa_system_prompt = press_release_prompt()
@@ -83,7 +87,7 @@ class LLMQAInteraction:
             case 'content-strategy-suggestion':
                 qa_system_prompt = content_strategy_prompt()
             case 'speech-writing':
-                qa_system_prompt = content_strategy_prompt()
+                qa_system_prompt = speech_writing()
             case _:
                 qa_system_prompt = none_case_catcher()
 
@@ -121,6 +125,7 @@ class LLMQAInteraction:
         if need_new_data:
             # Retrieve relevant documents based on the contextualized question
             retrieved_docs = self.vectorstore.similarity_search(contextualized_question)
+            self.current_document = retrieved_docs
             formatted_docs = self._format_docs(retrieved_docs)
 
         # Use the retrieved context and/or chat history to answer the question
@@ -140,14 +145,20 @@ class LLMQAInteraction:
     def _decide_retrieval_based_on_question(self, question):
         question_lower = question.lower()
 
-        # Check for new data keywords using set intersection for efficiency
+        # Check for new data keywords
         if any(keyword in question_lower for keyword in self.NEW_DATA_KEYWORDS):
             return True
-
         # Check for follow-up indicators
-        if any(indicator in question_lower for indicator in self.FOLLOW_UP_INDICATORS):
+        elif any(indicator in question_lower for indicator in self.FOLLOW_UP_INDICATORS):
             if self._is_related_to_chat_history(question_lower):
                 return False  # Use existing chat history
+        elif self.topic != self.content_router.process_input(question):
+            return True
+
+        retrieved_docs = self.vectorstore.similarity_search(question_lower)
+        if retrieved_docs != self.current_document:
+            self.current_document = retrieved_docs
+            return True
 
         return True  # Default to fetching new data
 

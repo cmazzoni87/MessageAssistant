@@ -59,7 +59,7 @@ def main():
         os.environ['OPENAI_API_KEY'] = openai_api
 
     # Model selection and parameters
-    st.subheader('Models and parameters')
+    st.subheader('I can help with press releases, client briefs, and more! 📣👩‍💼💬📰📝')
     selected_model = st.sidebar.selectbox('Choose an Openai model',
                                           ['GPT-4 (Top of the line)', 'GPT-3 (Standard)'],
                                           key='selected_model')

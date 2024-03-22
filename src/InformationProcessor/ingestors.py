@@ -1,14 +1,16 @@
 import os
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
-from .preprocessor import call_pdf_preprocess
+from .preprocessor import call_pdf_preprocess, call_image_preprocess, call_audio_preprocess
 from .utils.semantic_chuncker import SemanticChunker
+from .utils.txt_preprocessor import NERExtractor
 from langchain_openai.embeddings import OpenAIEmbeddings
 from lancedb.embeddings import EmbeddingFunctionRegistry
 from lancedb.pydantic import LanceModel, Vector
 import lancedb
 import uuid
-
+from time import sleep
+import colorama
 
 registry = EmbeddingFunctionRegistry().get_instance()
 openai = registry.get("openai").create()
@@ -29,7 +31,7 @@ class SrcType:
     sound: List[str] = field(default_factory=lambda: ['mp3', 'wav', 'aac', 'flac', 'ogg'])
 
 
-class SrcIngestor(SrcType):
+class SrcIngestor(SrcType, NERExtractor):
     """
     class that will read any document or file of various format and store its content in the corresponding memory bank
     """
@@ -39,6 +41,8 @@ class SrcIngestor(SrcType):
                  schema=Schema,
                  openai_api=None) -> None:
         super().__init__()
+        NERExtractor.__init__(self)
+        self.entities = None
         self.ai_credentials = openai_api
         self.base_schema = schema
         self.memory_bank = memory_bank
@@ -57,22 +61,27 @@ class SrcIngestor(SrcType):
             for file in files:
                 extension = file.split('.')[-1]
                 if extension in self.txt:
-                    print(f"Processing {file}")
                     self.ingest_txt(file)
                 elif extension in self.pdf:
-                    print(f"Processing {file}")
-                    self.ingest_pdf(file,  open_ai=self.ai_credentials)
+                    # print in blue color
+                    print(colorama.Fore.BLUE + f"Processing PDF {file}...")
+                    sleep(2)
+                    self.ingest_pdf(file, open_ai=self.ai_credentials)
                 elif extension in self.word:
                     self.ingest_word(file)
                 elif extension in self.image:
-                    print(f"Processing {file}")
-                    self.ingest_image(file)
+                    # print in blue color
+                    print(colorama.Fore.BLUE + f"Processing Image {file}...")
+                    sleep(2)
+                    self.ingest_image(file, open_ai=self.ai_credentials)
                 elif extension in self.sound:
-                    print(f"Processing {file}")
+                    # print in blue color
+                    print(colorama.Fore.BLUE + f"Processing Audio file {file}...")
+                    sleep(2)
                     self.ingest_sound(file)
                 else:
                     print(f"Unsupported file type: {file}")
-                # remove file from directory
+
                 os.remove(file)
 
     def add_text(self, texts: List[Any], metadata: Optional[List[dict]] = None) -> None:
@@ -82,6 +91,10 @@ class SrcIngestor(SrcType):
         for idx, text in enumerate(texts):
             embedding = embeddings[idx]
             meta = metadata[idx] if metadata else {}
+            # make a string out of metadata
+            str_meta = '[DOCUMENT INFO]:\n' + ' '.join([f"{k}: {v}\n" for k, v in meta.items()]) if meta else ''
+            entities = self.entities if self.entities else ''
+            text += '\n' + str_meta + '\n' + entities
             docs.append(
                 {
                     "vector": embedding,
@@ -94,6 +107,10 @@ class SrcIngestor(SrcType):
 
     def store_data(self, documents, metadata) -> None:
         self.add_text(documents, metadata)
+
+    def entity_finder(self, text):
+        # Apply the bert-base-NER pipeline to the text
+        self.entities = self.extract_entities(text)
 
     def ingest_word(self, payload) -> None:
         """
@@ -111,33 +128,38 @@ class SrcIngestor(SrcType):
         """
         This function will ingest a pdf file and store its content in the corresponding memory bank.
         """
-        # Starting PDF ingestion
         processed_pdf, size = call_pdf_preprocess(payload, open_ai)
-
-        # File name is the last part of the path and remove extension
-        file_name = os.path.basename(payload).split('.')[0]
-        txt_splitter = SemanticChunker(self._embeddings)
-
-        # list all files in the same directory as the processed_pdf file
-        other_file_names = os.listdir(payload.split(file_name)[0])
-
-        metadata = [{'file_name': file_name, 'other_files': other_file_names,
-                     'doc_info': {'file_type': 'pdf', 'pages_size': size}} for _ in range(len(processed_pdf))]
-
+        self.entity_finder(processed_pdf)
+        txt_splitter, metadata = self.chunker(payload, processed_pdf, size, 'pdf')
         pdf_documents = txt_splitter.split_text(processed_pdf)
-
-        # Store processed_pdf in memory bank Vector Store
         self.store_data(pdf_documents, metadata)
 
-    def ingest_image(self, payload) -> None:
+    def ingest_image(self, payload, open_ai) -> None:
         """
-        This function will ingest an image (jpeg, etc) file and store its content in the corresponding memory bank.
+        This function will ingest an image file and store its content in the corresponding memory bank.
         """
-        pass
+        processed_image, metadata = call_image_preprocess(payload, open_ai)
+        txt_splitter, metadata = self.chunker(payload, processed_image, metadata, 'image')
+        image_documents = txt_splitter.split_text(processed_image)
+        self.store_data(image_documents, metadata)
 
     def ingest_sound(self, payload) -> None:
         """
         This function will ingest a sound file and store its content in the corresponding memory bank.
         """
-        pass
+        preprocessed_audio, metadata = call_audio_preprocess(payload)
+        txt_splitter, metadata = self.chunker(payload, preprocessed_audio, metadata, 'sound')
+        audio_documents = txt_splitter.split_text(preprocessed_audio)
+        self.store_data(audio_documents, metadata)
 
+    def chunker(self, payload, preprocessed_audio, metadata, action):
+        """
+        This function will chunk the audio file into smaller pieces and store its content in the corresponding memory bank.
+        """
+        file_name = os.path.basename(payload).split('.')[0]
+        text_splitter = SemanticChunker(self._embeddings)
+        other_file_names = os.listdir(payload.split(file_name)[0])
+        metadata_dic = [{'file_name': file_name, 'other_files': other_file_names,
+                         'doc_info': {'file_type': action, 'metadata': metadata}}
+                        for _ in range(len(preprocessed_audio))]
+        return text_splitter, metadata_dic

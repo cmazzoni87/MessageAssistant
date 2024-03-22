@@ -12,6 +12,11 @@ def press_release_prompt() -> str:
     return prompts.PRESS_RELEASE_ANALYSIS
 
 
+def content_strategy_prompt() -> str:
+    """Return the prompt for the content strategy suggestion."""
+    return prompts.CONTENT_STRATEGY_SUGGESTION
+
+
 def speech_writing() -> str:
     """Return the prompt for the content strategy suggestion."""
     return prompts.CONTENT_STRATEGY_SUGGESTION
@@ -28,11 +33,6 @@ def client_brief_prompt() -> str:
     media = media_outlets['Healthcare']
     modified_prompt = prompts.CLIENT_BRIEF_CLARIFICATION.replace('%media_outlets%', ", ".join(media))
     return modified_prompt
-
-
-def content_strategy_prompt() -> str:
-    """Return the prompt for the content strategy suggestion."""
-    return prompts.CONTENT_STRATEGY_SUGGESTION
 
 
 def none_case_catcher() -> str:
